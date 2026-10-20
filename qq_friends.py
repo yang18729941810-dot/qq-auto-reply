@@ -468,7 +468,88 @@ def cmd_check(args=None):
     return 0 if bad == 0 else 1
 
 
+def _fmt_mtime(path):
+    try:
+        return time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(path)))
+    except Exception:
+        return "?"
+
+
+def _account_dirs():
+    try:
+        import auto_reply as ar
+        return ar._qq_data_dirs()
+    except Exception:
+        return []
+
+
+def cmd_account(args=None):
+    """列出 QQ 实例、账号标记命中情况、可作为标记的独有会话。
+
+    项目本身读不到 QQ 号（腾讯没把它暴露给 UI Automation），这里能做的是
+    把「哪个窗口对哪个号」这件事变得可核对：实例的 pid/会话数、标记命中、
+    以及本机数据目录里登录过的号。
+    """
+    mains = _mains_sorted()
+    if not mains:
+        print("没有发现 QQ 主窗口（QQ 未启动或未登录）。")
+        return 1
+    markers = config_list("account_markers")
+    targets = config_list("targets")
+    per_instance = []
+    print("== QQ 实例 ==")
+    for i, (_title, hwnd) in enumerate(mains, 1):
+        convs = qq.all_conversations(hwnd) or []
+        per_instance.append(convs)
+        names = {n for n, _ in convs}
+        print("[实例 %d] pid=%s hwnd=%s 会话 %d 条"
+              % (i, qq.window_pid(hwnd), hwnd, len(convs)))
+        if not markers:
+            print("    账号标记：未设置（会处理所有实例）")
+        else:
+            miss = [m for m in markers if m not in names]
+            if miss:
+                print("    账号标记：✗ 缺 %s" % ("、".join(miss),))
+            else:
+                print("    账号标记：✓ 命中 %s" % ("、".join(markers),))
+        hit = [t for t in targets if any(name_matches_loose(n, t) for n in names)]
+        print("    白名单命中：%s" % ("、".join(hit) if hit else "（无）"))
+
+    if len(per_instance) > 1:
+        for i, convs in enumerate(per_instance, 1):
+            others = set()
+            for j, other in enumerate(per_instance, 1):
+                if j != i:
+                    others |= {n for n, _ in other}
+            uniq = [n for n, _ in convs if n and n not in others]
+            if uniq:
+                print("\n[实例 %d] 只在这个号上有的会话（适合写进 account_markers）：" % i)
+                for n in uniq[:8]:
+                    print("   ", n)
+
+    print("\n== 本机 QQ 数据目录里登录过的号 ==")
+    dirs = _account_dirs()
+    if not dirs:
+        print("  没找到（可在配置里填 qq_data_dir，或 QQ 还没产生数据）")
+    for d in dirs:
+        print("  uin %s  最后写入 %s" % (os.path.basename(d), _fmt_mtime(d)))
+
+    print("\n说明：项目读不到当前实例的 QQ 号（腾讯没把它暴露给 UI Automation）。")
+    print("号码在 QQ 左上角头像 → 个人资料里看；把只有那个号才有的会话写进")
+    print("account_markers（或用上面列出的候选），启动日志和 doctor 会显示命中情况。")
+    print("担心回错号就设 strict_account=true：标记对不上时宁可完全不回。")
+    return 0
+
+
+def name_matches_loose(name, target):
+    """会话名与配置名是否指同一个人（忽略空白/零宽字符）。"""
+    def norm(x):
+        return re.sub(r"[\s\u3000\u200b\ufeff]+", "", x or "").lower()
+    return bool(name) and bool(target) and norm(name) == norm(target)
+
+
 HANDLERS = {
+    "account": cmd_account,
     "list": cmd_list, "friends": cmd_list, "pick": cmd_pick,
     "add": cmd_add, "del": cmd_del, "rm": cmd_del, "remove": cmd_del,
     "ignore": cmd_ignore, "unignore": cmd_unignore,

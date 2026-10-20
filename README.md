@@ -88,6 +88,17 @@ python auto_reply.py show
 多开（同时登录多个 QQ）时，用 `account_markers` 指定「列表里含哪个会话」来认账号；
 标记对不上时不会死等：只有一个实例且配了白名单就直接用它，多个实例时只在唯一一个含白名单好友时采用。
 
+想先确认「哪个窗口是哪个号」：
+
+```powershell
+python auto_reply.py account
+```
+
+它会列出每个实例的 pid、窗口、会话数、账号标记命中情况、只在这个号上有的会话（可直接拿来当标记），
+以及本机 QQ 数据目录里登录过的号。**项目读不到当前实例的 QQ 号**（腾讯没把它暴露给 UI Automation），
+号码要在 QQ 左上角头像 → 个人资料里看，再用标记会话把两边对上。
+担心回错号就设 `strict_account: true`：标记对不上时完全不回，不用单实例兜底。
+
 ## 自检
 
 ```powershell
@@ -108,6 +119,7 @@ python auto_reply.py doctor
 | `targets` | 可回复好友名单，空则看 `listen_all` |
 | `listen_all` | 是否回复所有会话（风险高，默认关） |
 | `account_markers` | 多开认账号用的会话名 |
+| `strict_account` | 标记对不上时完全不回（默认 false，会走单实例兜底） |
 | `ignore` | 黑名单，优先级最高 |
 | `send_key` | `auto` / `enter` / `ctrl+enter`；auto 会自己学会当前 QQ 的设置 |
 | `min_reply_interval` / `global_reply_limit` / `quiet_hours` | 节流与免打扰 |
@@ -115,7 +127,7 @@ python auto_reply.py doctor
 | `manual_mode` | 只听不回（比杀进程省事，队列和历史都不丢） |
 | `vision_enabled` | 识图；会消耗图片 token，图会上传到模型服务商 |
 
-`api_key`、`system_prompt_lines`、模型参数、`targets`、`ignore`、`listen_all`、`send_key`、`account_markers` 都是热更新的；节流、免打扰、识图、表情包等改完要重启。
+`api_key`、`system_prompt_lines`、模型参数、`targets`、`ignore`、`listen_all`、`send_key`、`account_markers`、`strict_account` 都是热更新的；节流、免打扰、识图、表情包等改完要重启。
 
 ## 表情包
 

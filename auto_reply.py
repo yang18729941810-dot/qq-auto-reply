@@ -241,6 +241,9 @@ _targets = setting_list("targets")
 # 导致 listen_all 永远不生效。只有既没配 targets、也没开 listen_all 时才回退。
 TARGETS = _targets if _targets else ([] if (LISTEN_ALL or not TARGET) else [TARGET])
 TARGET_UIN = setting("target_uin", "AUTO_REPLY_UIN", "")
+# 严格账号：account_markers 对不上时宁可完全不回，也不用"只有一个实例"的兜底。
+# 多开、且担心回错号时打开。
+STRICT_ACCOUNT = setting_bool("strict_account", False)
 
 # —— 名单热更新 ——
 # targets / ignore / listen_all / skip_group_like / send_key 以前只在启动时读一次，
@@ -248,7 +251,7 @@ TARGET_UIN = setting("target_uin", "AUTO_REPLY_UIN", "")
 # mtime：用 `python auto_reply.py pick` 改完，正在跑的脚本下一个轮询就生效。
 _WATCH = {"sig": None, "first": True, "targets": TARGETS, "ignore": IGNORE,
           "listen_all": LISTEN_ALL, "skip_group": True, "send_key": "auto",
-          "markers": ACCOUNT_MARKERS}
+          "markers": ACCOUNT_MARKERS, "strict": STRICT_ACCOUNT}
 
 
 def _config_sig():
@@ -271,7 +274,7 @@ def refresh_watch_settings(force=False):
     listen_all 与 targets 的优先级：配了 targets 就只回名单里的人；
     targets 为空才看 listen_all。这一条和旧版一致，所以老配置不会变味。
     """
-    global TARGETS, IGNORE, LISTEN_ALL, SKIP_GROUP_LIKE, ACCOUNT_MARKERS
+    global TARGETS, IGNORE, LISTEN_ALL, SKIP_GROUP_LIKE, ACCOUNT_MARKERS, STRICT_ACCOUNT
     sig = _config_sig()
     if not force and sig is not None and sig == _WATCH["sig"]:
         return False
@@ -292,9 +295,11 @@ def refresh_watch_settings(force=False):
     send_key = str(cfg.get("send_key") or "auto").strip().lower() or "auto"
     markers = (_as_name_list(cfg.get("account_markers"))
                if isinstance(cfg.get("account_markers"), list) else ACCOUNT_MARKERS)
+    strict = (cfg.get("strict_account") if isinstance(cfg.get("strict_account"), bool)
+              else STRICT_ACCOUNT)
     new = {"targets": targets, "ignore": ignore, "listen_all": bool(listen_all),
            "skip_group": bool(skip_group), "send_key": send_key,
-           "markers": markers}
+           "markers": markers, "strict": bool(strict)}
     changed = any(_WATCH.get(k) != v for k, v in new.items())
     first = _WATCH["first"]
     _WATCH.update(new)
@@ -302,6 +307,7 @@ def refresh_watch_settings(force=False):
     _WATCH["sig"] = sig
     TARGETS, IGNORE, LISTEN_ALL, SKIP_GROUP_LIKE, ACCOUNT_MARKERS = (
         targets, ignore, bool(listen_all), bool(skip_group), markers)
+    STRICT_ACCOUNT = bool(strict)
     qq.set_send_key(send_key)
     if changed and not first:
         log("配置热更新：targets=%s ignore=%s listen_all=%s account_markers=%s send_key=%s"
@@ -1133,6 +1139,7 @@ def write_status(state, extra=None):
         "targets": _WATCH["targets"],
         "ignore": _WATCH["ignore"],
         "account_markers": _WATCH["markers"],
+        "strict_account": _WATCH["strict"],
         "send_key": _WATCH["send_key"],
         "qq_flavor": _ENV_INFO.get("flavor", ""),
         "qq_version": _ENV_INFO.get("version", ""),
@@ -1643,6 +1650,10 @@ def pick_sessions():
     else:
         chosen = instances
 
+    if not chosen and _WATCH["strict"] and ACCOUNT_MARKERS:
+        _note_pick("严格模式：没有 QQ 实例含标记会话 %s，不做任何回复"
+                   % ("、".join(ACCOUNT_MARKERS),))
+        return []
     if not chosen:
         targets = _WATCH["targets"]
         if len(instances) == 1 and targets:
@@ -1934,7 +1945,7 @@ CLI_COMMANDS = {
     "list": "qq_friends", "friends": "qq_friends", "pick": "qq_friends",
     "add": "qq_friends", "del": "qq_friends", "rm": "qq_friends",
     "remove": "qq_friends", "ignore": "qq_friends", "unignore": "qq_friends",
-    "show": "qq_friends", "check": "qq_friends",
+    "show": "qq_friends", "check": "qq_friends", "account": "qq_friends",
     "doctor": "qq_doctor", "diag": "qq_doctor",
 }
 
@@ -1948,6 +1959,7 @@ USAGE = """用法：
   python auto_reply.py unignore 名字   从黑名单移除
   python auto_reply.py show            显示当前名单
   python auto_reply.py check           核对名单里的人现在还在不在
+  python auto_reply.py account         查看 QQ 实例、账号标记命中、本机登录过的号
   python auto_reply.py doctor          自检 QQ 版本/控件识别/配置
 名单改完，正在运行的脚本会在下一个轮询周期自动生效，不用重启。
 """

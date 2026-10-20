@@ -65,6 +65,14 @@ Also `add`, `del`, `ignore`, `unignore`, `show`. Names are matched against the r
 
 With multiple accounts signed in, `account_markers` selects the instance whose conversation list contains a given chat.
 
+To see which window belongs to which account:
+
+```powershell
+python auto_reply.py account
+```
+
+It lists each instance's pid, window, conversation count, marker hits, conversations unique to that instance (usable as markers), and the accounts found in the local QQ data directory. The bot **cannot read the QQ number itself** — Tencent does not expose it through UI Automation — so check it in QQ, then tie it to an instance with a marker chat. Set `strict_account: true` to refuse to run when markers do not match.
+
 ## Config highlights
 
 | Key | Meaning |
@@ -73,6 +81,7 @@ With multiple accounts signed in, `account_markers` selects the instance whose c
 | `targets` | whitelist; empty means `listen_all` decides |
 | `listen_all` | reply to every conversation (risky, off by default) |
 | `account_markers` | identify the right QQ instance when multi-account |
+| `strict_account` | refuse to run when markers don't match (default false) |
 | `ignore` | blacklist, highest priority |
 | `send_key` | `auto` / `enter` / `ctrl+enter`; auto learns the client's setting |
 | `min_reply_interval`, `global_reply_limit`, `quiet_hours` | throttling |

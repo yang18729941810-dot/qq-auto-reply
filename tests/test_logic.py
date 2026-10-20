@@ -34,6 +34,19 @@ class NameMatchTest(unittest.TestCase):
         self.assertFalse(ar.name_matches("小明", ""))
 
 
+class AccountNameTest(unittest.TestCase):
+    def test_loose_match(self):
+        self.assertTrue(friends.name_matches_loose("小 明", "小明"))
+        self.assertTrue(friends.name_matches_loose("小明\u200b", "小明"))
+
+    def test_no_substring(self):
+        self.assertFalse(friends.name_matches_loose("牛马一家亲", "牛"))
+
+    def test_empty(self):
+        self.assertFalse(friends.name_matches_loose("", "小明"))
+        self.assertFalse(friends.name_matches_loose("小明", ""))
+
+
 class SelectionTest(unittest.TestCase):
     ROWS = [{"name": n} for n in ("小明", "小红", "小刚", "某群")]
 
