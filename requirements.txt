@@ -1,0 +1,5 @@
+# QQ 自动回复依赖（Windows / Python 3.9+）
+pywin32
+uiautomation
+comtypes
+Pillow

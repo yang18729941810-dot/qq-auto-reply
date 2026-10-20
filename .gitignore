@@ -1,0 +1,26 @@
+# —— 运行时数据 / 个人隐私：不要提交 ——
+# 配置里有 API key 和好友名单；日志/历史里有聊天内容
+auto_reply_config.json
+auto_reply_config.json.*
+auto_reply.log
+auto_reply.log.*
+auto_reply_history.json
+auto_reply_status.json
+auto_reply_status.json.*
+*.tmp
+
+# —— 本地工作目录 ——
+__pycache__/
+*.py[cod]
+_backup/
+_archive/
+_diag/
+sync_to_desktop.ps1
+.venv/
+venv/
+.idea/
+.vscode/
+
+# —— 表情包素材：第三方图片不进仓库，说明文件保留 ——
+images/*
+!images/说明.txt
